@@ -1,0 +1,5 @@
+import {readLocal,transactLocal} from './storage';import {hydraRead,hydraUpsert,hydraHealth} from './hydra';import type {Store} from './types';
+export const mode=()=>process.env.KYNTHERA_STORE==='hydradb'?'hydradb':'local';
+export async function getStore(owner:string){return mode()==='hydradb'?hydraRead(owner):readLocal(owner)}
+export async function mutate<T>(owner:string,fn:(s:Store)=>T|Promise<T>):Promise<T>{if(mode()==='local')return transactLocal(owner,fn);const before=await hydraRead(owner);const result=await fn(before);for(const x of before.strategies)await hydraUpsert('KStrategy',x,owner);for(const x of before.incidents)await hydraUpsert('KIncident',x,owner);for(const x of before.events)await hydraUpsert('KEvent',x,owner);return result}
+export async function status(){if(mode()==='local')return {mode:'local',connected:true,note:'Local development storage. Data starts empty. Not suitable for Vercel persistence.'};try{return {mode:'hydradb',connected:await hydraHealth(),note:'HydraDB Bolt connection verified.'}}catch(e:any){return {mode:'hydradb',connected:false,note:String(e.message||e).slice(0,200)}}}
