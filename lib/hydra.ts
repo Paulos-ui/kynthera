@@ -1,6 +1,7 @@
 import {createHash} from 'node:crypto';
 import neo4j, {type Driver, type Session} from 'neo4j-driver';
 import type {Incident, Strategy, Store} from './types';
+import {activeHydraConnection} from './hydra-config.mjs';
 
 type Kind = 'KIncident' | 'KStrategy' | 'KEvent';
 type Event = Store['events'][number];
@@ -10,16 +11,17 @@ type RawStrategy = Omit<Strategy, 'steps'> & {steps: string};
 // Never call this endpoint from a browser; the token belongs exclusively on the server.
 type HttpCell = {type: string;value?: unknown};
 type HttpResult = {query_id?: string;columns?: string[];rows?: HttpCell[][];next_cursor?: unknown;error?: {message?: string;code?: string}};
-const usingHttp = () => Boolean(process.env.HYDRADB_HTTP_URL?.trim());
+const usingHttp = () => activeHydraConnection().transport === 'http';
 function decodeCell(cell:HttpCell):unknown {
   if (!cell || cell.type === 'null') return null;
   if (cell.type === 'list' && Array.isArray(cell.value)) return cell.value.map(v=>decodeCell(v as HttpCell));
   return cell.value ?? null;
 }
 async function httpQuery(query:string,parameters:Record<string,unknown>={}):Promise<Record<string,unknown>[]> {
-  const base=(process.env.HYDRADB_HTTP_URL||'').replace(/\/+$/,'');
-  const token=process.env.HYDRADB_AUTH_TOKEN;
-  if(!base||!token) throw Error('HYDRADB_HTTP_URL and HYDRADB_AUTH_TOKEN must both be configured');
+  const connection=activeHydraConnection();
+  const base=(connection.url||'').replace(/\/+$/,'');
+  const token=connection.token;
+  if(!base||!token) throw Error(`HydraDB ${connection.target} HTTP URL and authentication token must both be configured`);
   if(!/^https:\/\//i.test(base) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(base))
     throw Error('A remote HydraDB HTTP URL must use HTTPS');
   const graph=process.env.HYDRADB_DATABASE||'default';
