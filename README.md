@@ -1,5 +1,7 @@
 # Kynthera — authenticated recovery intelligence
 
+**HydraDB integration update:** The graph adapter uses the self-hosted `graph-node` Bolt interface and HydraDB's documented `UNWIND ... MERGE ... SET n:Label` form for vertex writes. It stores native numeric graph IDs and retains Kynthera's UUIDs as `externalId`. The session explicitly targets graph database `default`. See `HYDRADB-LOCAL-SETUP.md` to start the free database on Ubuntu WSL. Live round-trip verification on your instance is still required.
+
 A Next.js application for incident capture, recovery strategy ranking, feedback and graph investigation. **No sample dataset is automatically loaded.** Google sign-in protects the workspace and APIs.
 
 ## Requirements
